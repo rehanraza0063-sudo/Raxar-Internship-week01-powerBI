@@ -1,0 +1,15 @@
+﻿category,category_group
+Complex,Complex
+Debris flow,Flow
+Earth flow,Flow
+Lahar,Flow
+Mudslide,Flow
+Creep,Landslide (slide)
+Landslide,Landslide (slide)
+Topple,Landslide (slide)
+Translational slide,Landslide (slide)
+Other,Other
+Riverbank collapse,Other
+Snow avalanche,Other
+Rock fall,Rock fall
+Unknown,Unknown

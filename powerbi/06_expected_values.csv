@@ -1,0 +1,24 @@
+﻿measure,filter_context,expected_value
+Events,no filter,11033
+Fatalities,no filter,31061
+Injuries,no filter,4029
+Fatal Events,no filter,2442
+Events With Fatality Reported,no filter,9648
+Countries,no filter,140
+Fatal Event Rate %,no filter,25.3
+Fatalities per Event,no filter,2.82
+Median Fatalities (reported),no filter,0
+Events,year = 2010,1536
+Events,country = India,1503
+Fatalities,country = India,7264
+Events,country = United States,3604
+Events,trigger group = Rainfall (dim_trigger),8149
+Large or Bigger Events,no filter,855
+Fatalities excl Top 3 Events,no filter,22196
+Top 10 Events Fatalities,no filter,11617
+% Country Estimated,no filter,14.2
+% Fatality Reported,no filter,87.4
+Possible Duplicates,no filter,166
+Jun-Sep Share %,country = India,73.2
+Maharashtra Events,no filter,77
+Events excl Oregon DOT,no filter,10265

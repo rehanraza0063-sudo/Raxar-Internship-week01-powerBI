@@ -1,0 +1,259 @@
+// =====================================================================================
+// LandslideWatch / NASA Global Landslide Catalog - DAX measures
+//
+// SETUP: Home > Enter data > one blank column > name the table  _Measures  > Load.
+// Then for each block below: select _Measures > New measure > paste ONE measure.
+// (Measure names in square brackets are referenced by other measures, so keep the names.)
+//
+// MODEL assumed (see 01_BUILD_GUIDE.md):
+//   fact_landslides  <- dim_date (event_date -> date), dim_country, dim_trigger, dim_size,
+//                       dim_category, dim_setting   (all one-to-many, single direction)
+// =====================================================================================
+
+
+// ---------- 1. CORE COUNTS --------------------------------------------------------
+
+Events = COUNTROWS ( fact_landslides )
+
+Fatalities = SUM ( fact_landslides[fatality_count] )
+
+Injuries = SUM ( fact_landslides[injury_count] )
+
+Fatal Events = SUM ( fact_landslides[fatal_event_flag] )
+
+Events With Fatality Reported = SUM ( fact_landslides[fatality_reported_flag] )
+
+Countries =
+CALCULATE (
+    DISTINCTCOUNT ( fact_landslides[country_name] ),
+    fact_landslides[country_name] <> "Unknown"
+)
+
+
+// ---------- 2. RATES AND SHARES ---------------------------------------------------
+// Fatal Event Rate uses only events that HAVE a reported fatality count (12.6% have none).
+
+Fatal Event Rate % =
+DIVIDE ( [Fatal Events], [Events With Fatality Reported] )
+
+Fatalities per Event =
+DIVIDE ( [Fatalities], [Events] )
+
+Fatalities per Fatal Event =
+DIVIDE ( [Fatalities], [Fatal Events] )
+
+Median Fatalities (reported) =
+MEDIANX (
+    FILTER ( fact_landslides, fact_landslides[fatality_reported_flag] = 1 ),
+    fact_landslides[fatality_count]
+)
+
+Share of Events % =
+DIVIDE ( [Events], CALCULATE ( [Events], ALLSELECTED () ) )
+
+Share of Fatalities % =
+DIVIDE ( [Fatalities], CALCULATE ( [Fatalities], ALLSELECTED () ) )
+
+
+// ---------- 3. TIME INTELLIGENCE (needs dim_date marked as a date table) ----------
+// Note: data ends 28 Sep 2017 and is sparse before 2007, so compare 2008-2016 only.
+
+Events LY =
+CALCULATE ( [Events], SAMEPERIODLASTYEAR ( dim_date[date] ) )
+
+Events YoY % =
+DIVIDE ( [Events] - [Events LY], [Events LY] )
+
+Events Rolling 12M =
+CALCULATE (
+    [Events],
+    DATESINPERIOD ( dim_date[date], MAX ( dim_date[date] ), -12, MONTH )
+)
+
+Fatalities Rolling 12M =
+CALCULATE (
+    [Fatalities],
+    DATESINPERIOD ( dim_date[date], MAX ( dim_date[date] ), -12, MONTH )
+)
+
+Events YTD =
+TOTALYTD ( [Events], dim_date[date] )
+
+Events Complete Years Only =
+CALCULATE ( [Events], fact_landslides[complete_year_flag] = 1 )
+
+Monthly Z-Score =
+// How unusual is this month? Computed over the 2007-2017 core period.
+VAR M =
+    CALCULATETABLE (
+        ADDCOLUMNS ( VALUES ( dim_date[year_month] ), "@E", [Events] ),
+        ALL ( dim_date ),
+        fact_landslides[core_period_flag] = 1
+    )
+VAR Avg = AVERAGEX ( M, [@E] )
+VAR SD  = STDEVX.P ( M, [@E] )
+RETURN
+    DIVIDE ( [Events] - Avg, SD )
+
+
+// ---------- 4. SEASONALITY --------------------------------------------------------
+
+Seasonality Index =
+// 1.0 = an average month. Put dim_date[month_name] on the axis.
+VAR ThisMonth = [Events]
+VAR AvgMonth =
+    AVERAGEX (
+        ALL ( dim_date[month_num], dim_date[month_name] ),
+        CALCULATE ( [Events] )
+    )
+RETURN
+    DIVIDE ( ThisMonth, AvgMonth )
+
+Jun-Sep Share % =
+DIVIDE (
+    CALCULATE ( [Events], dim_date[month_num] IN { 6, 7, 8, 9 } ),
+    [Events]
+)
+
+
+// ---------- 5. SIZE AND SEVERITY --------------------------------------------------
+
+Large or Bigger Events =
+CALCULATE ( [Events], dim_size[size_rank] >= 3 )
+
+Large or Bigger % =
+// Share among events whose size is known (rank 0 = Unknown)
+DIVIDE (
+    [Large or Bigger Events],
+    CALCULATE ( [Events], dim_size[size_rank] > 0 )
+)
+
+Large or Bigger Fatalities Share % =
+DIVIDE (
+    CALCULATE ( [Fatalities], dim_size[size_rank] >= 3 ),
+    [Fatalities]
+)
+
+
+// ---------- 6. OUTLIERS AND CONCENTRATION -----------------------------------------
+// Three events (Kedarnath, Abi Barik, Zhouqu) are 28.5% of all deaths.
+
+Top 3 Events Fatalities =
+SUMX (
+    TOPN ( 3, fact_landslides, fact_landslides[fatality_count], DESC, fact_landslides[event_id], DESC ),
+    fact_landslides[fatality_count]
+)
+
+Fatalities excl Top 3 Events =
+[Fatalities] - [Top 3 Events Fatalities]
+
+Top 10 Events Fatalities =
+SUMX (
+    TOPN ( 10, fact_landslides, fact_landslides[fatality_count], DESC, fact_landslides[event_id], DESC ),
+    fact_landslides[fatality_count]
+)
+
+Top 10 Share % =
+DIVIDE ( [Top 10 Events Fatalities], [Fatalities] )
+
+Cumulative Events % =
+// Pareto line. Put dim_country[country_name] on the axis, sorted by [Events] descending.
+VAR Cur   = [Events]
+VAR Total = CALCULATE ( [Events], ALLSELECTED ( dim_country ) )
+VAR Cum =
+    SUMX (
+        FILTER ( ALLSELECTED ( dim_country[country_name] ), [Events] >= Cur ),
+        [Events]
+    )
+RETURN
+    DIVIDE ( Cum, Total )
+
+Fatalities (selected view) =
+// Pair with the disconnected table  Outlier Switch  (see below) so a slicer can toggle outliers.
+IF (
+    SELECTEDVALUE ( 'Outlier Switch'[Option], "Include all events" ) = "Exclude top 3 events",
+    [Fatalities excl Top 3 Events],
+    [Fatalities]
+)
+
+// New table (Modeling > New table):
+// Outlier Switch = DATATABLE ( "Option", STRING, { { "Include all events" }, { "Exclude top 3 events" } } )
+
+
+// ---------- 7. INDIA AND MAHARASHTRA ----------------------------------------------
+
+India Events =
+CALCULATE ( [Events], dim_country[country_name] = "India" )
+
+India Fatalities =
+CALCULATE ( [Fatalities], dim_country[country_name] = "India" )
+
+India Share of Events % =
+DIVIDE ( [India Events], CALCULATE ( [Events], ALL ( dim_country ) ) )
+
+Maharashtra Events =
+CALCULATE (
+    [Events],
+    dim_country[country_name] = "India",
+    fact_landslides[admin_division] = "Maharashtra"
+)
+
+Maharashtra Fatalities =
+CALCULATE (
+    [Fatalities],
+    dim_country[country_name] = "India",
+    fact_landslides[admin_division] = "Maharashtra"
+)
+
+
+// ---------- 8. DATA QUALITY AND BIAS ----------------------------------------------
+
+% Fatality Reported =
+DIVIDE ( [Events With Fatality Reported], [Events] )
+
+% Country Estimated =
+// Rows whose country was recovered from text or nearby events (flag: country_source)
+DIVIDE ( CALCULATE ( [Events], fact_landslides[country_source] <> "Original" ), [Events] )
+
+% Trigger Unknown =
+DIVIDE ( CALCULATE ( [Events], dim_trigger[trigger] = "Unknown" ), [Events] )
+
+% Size Unknown =
+DIVIDE ( CALCULATE ( [Events], dim_size[size] = "Unknown" ), [Events] )
+
+% Setting Unknown =
+DIVIDE ( CALCULATE ( [Events], dim_setting[setting] = "Unknown" ), [Events] )
+
+% High Precision Location =
+// Location accurate to 5 km or better
+DIVIDE ( SUM ( fact_landslides[high_precision_flag] ), [Events] )
+
+Median Report Lag (days) =
+MEDIAN ( fact_landslides[report_lag_days] )
+
+Possible Duplicates =
+SUM ( fact_landslides[possible_duplicate_flag] )
+
+Official Source Share % =
+DIVIDE ( CALCULATE ( [Events], fact_landslides[source_group] = "Official or agency" ), [Events] )
+
+Events excl Oregon DOT =
+CALCULATE ( [Events], fact_landslides[source_name] <> "Oregon DOT" )
+
+
+// ---------- 9. DYNAMIC TITLES (use as visual title: fx > Field value) -------------
+
+Title - Country =
+"Landslides in "
+    & IF ( HASONEVALUE ( dim_country[country_name] ), SELECTEDVALUE ( dim_country[country_name] ), "all selected countries" )
+
+Title - Years =
+VAR MinY = MIN ( dim_date[year] )
+VAR MaxY = MAX ( dim_date[year] )
+RETURN
+    "Reported " & FORMAT ( MinY, "0" ) & " to " & FORMAT ( MaxY, "0" )
+
+Data Note =
+"Counts show where landslides were reported, not where they occur most. "
+    & FORMAT ( [% Country Estimated], "0.0%" ) & " of countries are estimated; "
+    & FORMAT ( [% Fatality Reported], "0.0%" ) & " of events report fatalities."

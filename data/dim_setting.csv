@@ -1,0 +1,15 @@
+﻿setting,setting_group
+Engineered slope,Built environment
+Mine,Built environment
+Retaining wall,Built environment
+Urban,Built environment
+Above coast,Natural terrain
+Above river,Natural terrain
+Bluff,Natural terrain
+Burned area,Natural terrain
+Deforested slope,Natural terrain
+Natural slope,Natural terrain
+Other,Other
+Above road,Road-related
+Below road,Road-related
+Unknown,Unknown

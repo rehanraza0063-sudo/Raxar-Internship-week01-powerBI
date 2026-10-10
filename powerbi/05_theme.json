@@ -1,0 +1,32 @@
+{
+  "name": "LandslideWatch",
+  "dataColors": ["#2a78d6", "#e87ba4", "#6250d6", "#1baf7a", "#eb6834", "#eda100", "#0F5C63", "#898781"],
+  "background": "#FFFFFF",
+  "foreground": "#17202A",
+  "tableAccent": "#0F5C63",
+  "good": "#2E9E5B",
+  "neutral": "#E8B923",
+  "bad": "#D32F2F",
+  "maximum": "#0A4248",
+  "center": "#7FB7BD",
+  "minimum": "#E6F1F2",
+  "textClasses": {
+    "callout": { "fontSize": 28, "fontFace": "Segoe UI Semibold", "color": "#17202A" },
+    "title": { "fontSize": 13, "fontFace": "Segoe UI Semibold", "color": "#17202A" },
+    "header": { "fontSize": 12, "fontFace": "Segoe UI Semibold", "color": "#17202A" },
+    "label": { "fontSize": 10, "fontFace": "Segoe UI", "color": "#5B6672" }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#FFFFFF" } }, "transparency": 0 }],
+        "border": [{ "show": true, "color": { "solid": { "color": "#D3D8DD" } }, "radius": 6 }]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#E9ECEF" } }, "transparency": 0 }]
+      }
+    }
+  }
+}

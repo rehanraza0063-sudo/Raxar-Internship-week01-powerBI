@@ -1,0 +1,19 @@
+﻿trigger,trigger_group
+Earthquake,Earthquake and volcano
+Volcano,Earthquake and volcano
+Flooding,Flooding
+Construction,Human activity
+Dam embankment collapse,Human activity
+Leaking pipe,Human activity
+Mining,Human activity
+Vibration,Human activity
+No apparent trigger,Other or none
+Other,Other or none
+Continuous rain,Rainfall
+Downpour,Rainfall
+Monsoon,Rainfall
+Rain,Rainfall
+Freeze thaw,Snow and freeze-thaw
+Snowfall snowmelt,Snow and freeze-thaw
+Tropical cyclone,Tropical cyclone
+Unknown,Unknown
